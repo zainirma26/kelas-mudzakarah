@@ -53,6 +53,11 @@ $("joinBtn").addEventListener("click", async () => {
   if (!userName) { $("err").textContent = "Isi nama kamu."; return; }
   if (!roomName) { $("err").textContent = "Pilih atau tulis nama pelajaran."; return; }
   if (role === "guru" && !pin) { $("err").textContent = "Masukkan PIN guru."; return; }
+  const setup = role === "guru" && $("pin2Wrap").style.display === "block";
+  if (setup) {
+    if (!/^\d{6,12}$/.test(pin)) { $("err").textContent = "PIN baru harus 6-12 angka."; return; }
+    if (pin !== $("pin2").value) { $("err").textContent = "Kedua PIN tidak sama."; return; }
+  }
 
   $("joinBtn").disabled = true; $("joinBtn").textContent = "Mencari kelas…";
   const server = await resolveServer();
@@ -73,10 +78,16 @@ $("joinBtn").addEventListener("click", async () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: ctrl.signal,
-      body: JSON.stringify({ room: roomName, name: userName, role, pin }),
+      body: JSON.stringify({ room: roomName, name: userName, role, pin, setup }),
     });
     const data = await r.json();
+    if (r.status === 409 && data.needSetup) {
+      $("pin2Wrap").style.display = "block";
+      $("pin").value = ""; $("pin").focus();
+      throw new Error("PIN guru belum dibuat. Buat PIN baru (6-12 angka): isi PIN, ulangi di kolom bawah, lalu tekan Masuk Kelas.");
+    }
     if (!r.ok) throw new Error(data.error || "Gagal mengambil token");
+    $("pin2Wrap").style.display = "none"; $("pin2").value = "";
     await startRoom(data.url, data.token, role);
   } catch (e) {
     $("err").textContent = (e instanceof TypeError || e.name === "AbortError")
