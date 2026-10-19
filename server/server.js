@@ -29,6 +29,17 @@ function savePin(pin) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.writeFileSync(PIN_FILE, JSON.stringify({ salt, hash: hashPin(pin, salt) }));
 }
+// PIN murid per pelajaran (dibuat guru), disimpan ter-hash di rooms.json
+const ROOMS_FILE = path.join(DATA_DIR, "rooms.json");
+function loadRooms() { try { return JSON.parse(fs.readFileSync(ROOMS_FILE, "utf8")); } catch { return {}; } }
+function saveRoomPin(room, pin) {
+  const rooms = loadRooms();
+  const salt = crypto.randomBytes(16).toString("hex");
+  rooms[room] = { salt, hash: hashPin(pin, salt) };
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(ROOMS_FILE, JSON.stringify(rooms));
+}
+const classPinOk = (v) => /^\d{4,12}$/.test(String(v || ""));
 const safeEq = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
 function pinIsSet() { return !!TEACHER_PIN || !!loadPin(); }
 function pinMatches(pin) {
@@ -55,20 +66,36 @@ app.post("/token", async (req, res) => {
     if (!room || !name) return res.status(400).json({ error: "Nama dan ruang kelas wajib diisi" });
 
     const isTeacher = role === "guru";
+    const cleanRoom = String(room).trim().toLowerCase().slice(0, 40);
+    const cleanName = String(name).trim().slice(0, 30);
+    const classPin = String(req.body.classPin || "").trim();
+    if (blocked(req.ip)) return res.status(429).json({ error: "Terlalu banyak percobaan. Coba lagi 10 menit lagi." });
+
     if (isTeacher) {
-      if (blocked(req.ip)) return res.status(429).json({ error: "Terlalu banyak percobaan. Coba lagi 10 menit lagi." });
+      // 1) PIN guru (dibuat sendiri saat pertama kali, atau dari TEACHER_PIN)
       if (!pinIsSet()) {
         if (!req.body.setup) return res.status(409).json({ needSetup: true, error: "PIN guru belum dibuat. Buat PIN baru." });
-        if (!/^\d{6,12}$/.test(String(pin || ""))) return res.status(400).json({ needSetup: true, error: "PIN harus 6-12 angka." });
-        savePin(pin);
+        if (!/^\d{6,12}$/.test(String(pin || ""))) return res.status(400).json({ needSetup: true, error: "PIN guru harus 6-12 angka." });
       } else if (!pinMatches(pin)) {
         noteFail(req.ip);
         return res.status(403).json({ error: "PIN guru salah" });
       }
+      // 2) PIN murid untuk pelajaran ini (wajib jika belum pernah dibuat)
+      const hasClassPin = !!loadRooms()[cleanRoom];
+      if (!hasClassPin && !classPin) return res.status(409).json({ needClassPin: true, error: "Buat PIN murid untuk pelajaran ini (4-12 angka)." });
+      if (classPin && !classPinOk(classPin)) return res.status(400).json({ needClassPin: true, error: "PIN murid harus 4-12 angka." });
+      // Semua valid: simpan
+      if (!pinIsSet()) savePin(pin);
+      if (classPin) saveRoomPin(cleanRoom, classPin);
+    } else {
+      const rec = loadRooms()[cleanRoom];
+      if (!rec) return res.status(403).json({ error: "Kelas ini belum dibuka guru." });
+      if (!classPin || !safeEq(hashPin(classPin, rec.salt), rec.hash)) {
+        noteFail(req.ip);
+        return res.status(403).json({ error: "PIN kelas salah" });
+      }
     }
 
-    const cleanRoom = String(room).trim().slice(0, 40);
-    const cleanName = String(name).trim().slice(0, 30);
     const identity = `${isTeacher ? "guru" : "murid"}-${cleanName}-${Math.random().toString(36).slice(2, 7)}`;
 
     const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
