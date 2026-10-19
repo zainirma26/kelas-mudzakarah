@@ -1,0 +1,11 @@
+{
+  "name": "kelas-online",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aplikasi kelas online low-latency (WebRTC) - guru layar besar, murid kecil",
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/cli": "^6.1.2",
+    "@capacitor/core": "^6.1.2"
+  }
+}

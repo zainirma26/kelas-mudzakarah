@@ -1,0 +1,48 @@
+/* Tampilan aplikasi. Ubah warna di :root paling atas. */
+  :root { --bg:#0e1116; --panel:#161b22; --line:#262d38; --txt:#e8edf3; --mute:#8b96a5; --acc:#3b82f6; --red:#ef4444; }
+  * { box-sizing:border-box; margin:0; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; background:var(--bg); color:var(--txt); font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; overflow:hidden; }
+  .screen { display:none; height:100%; }
+  .screen.active { display:flex; }
+
+  /* ---- Join ---- */
+  #join { align-items:center; justify-content:center; padding:20px; }
+  .card { width:100%; max-width:420px; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:22px; }
+  .card h1 { font-size:22px; margin-bottom:4px; }
+  .card p.sub { color:var(--mute); font-size:13px; margin-bottom:18px; }
+  label { display:block; font-size:12px; color:var(--mute); margin:12px 0 5px; }
+  input, select { width:100%; padding:12px; border-radius:10px; border:1px solid var(--line); background:#0b0f14; color:var(--txt); font-size:16px; }
+  button.primary { width:100%; margin-top:18px; padding:14px; border:0; border-radius:10px; background:var(--acc); color:#fff; font-size:16px; font-weight:600; }
+  #err { color:var(--red); font-size:13px; margin-top:10px; min-height:18px; }
+
+  /* ---- Room ---- */
+  #room { flex-direction:column; }
+  #main { flex:1; min-height:0; display:flex; flex-direction:column; gap:6px; padding:6px; }
+  #stage { flex:1 1 55%; min-height:0; background:#000; border-radius:12px; overflow:hidden; position:relative; }
+  #stage .tile { width:100%; height:100%; border-radius:0; }
+  #stage .tile video { object-fit:contain; background:#000; }
+  #stage .empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--mute); font-size:14px; text-align:center; padding:20px; }
+  #strip { flex:1 1 35%; min-height:0; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); grid-auto-rows:84px; gap:6px; align-content:start; }
+  .tile { position:relative; border-radius:10px; overflow:hidden; background:#1c232d; }
+  .tile video { width:100%; height:100%; object-fit:cover; display:block; }
+  .tile.novideo video { visibility:hidden; }
+  .tile .avatar { position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:26px; font-weight:700; color:var(--mute); }
+  .tile.novideo .avatar { display:flex; }
+  .tile .name { position:absolute; left:4px; bottom:4px; max-width:calc(100% - 8px); padding:2px 6px; border-radius:6px; background:rgba(0,0,0,.6); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #stage .tile .name { font-size:13px; padding:3px 8px; }
+  .tile.speaking { outline:2px solid #22c55e; outline-offset:-2px; }
+  .tile .muted { position:absolute; right:4px; top:4px; font-size:12px; display:none; }
+  .tile.micoff .muted { display:block; }
+
+  #bar { display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 10px calc(10px + env(safe-area-inset-bottom)); background:var(--panel); border-top:1px solid var(--line); }
+  #bar button { width:46px; height:46px; border-radius:50%; border:0; background:#232b36; color:var(--txt); font-size:20px; }
+  #bar button.off { background:var(--red); }
+  #bar button.leave { background:var(--red); }
+  #status { position:absolute; top:10px; left:10px; z-index:5; font-size:11px; padding:3px 8px; border-radius:8px; background:rgba(0,0,0,.65); }
+  #count { position:absolute; top:10px; right:10px; z-index:5; font-size:11px; padding:3px 8px; border-radius:8px; background:rgba(0,0,0,.65); }
+
+  @media (orientation:landscape) and (min-width:560px) {
+    #main { flex-direction:row; }
+    #stage { flex:1 1 72%; }
+    #strip { flex:0 0 28%; }
+  }

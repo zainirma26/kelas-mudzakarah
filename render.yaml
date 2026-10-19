@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: kelas-online-server
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free            # ganti ke "starter" agar server tidak pernah tidur
+    envVars:
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      - key: TEACHER_PIN
+        sync: false

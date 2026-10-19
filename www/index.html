@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Kelas Online</title>
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ======= Layar masuk ======= -->
+<div id="join" class="screen active">
+  <div class="card">
+    <h1>📚 Kelas Online</h1>
+    <p class="sub">Streaming belajar tanpa delay (WebRTC)</p>
+
+    <label>Nama kamu</label>
+    <input id="userName" placeholder="Nama" autocomplete="off">
+
+    <label>Pelajaran</label>
+    <select id="subject">
+      <option value="Matematika">Matematika</option>
+      <option value="IPA">IPA</option>
+      <option value="IPS">IPS</option>
+      <option value="Bahasa Indonesia">Bahasa Indonesia</option>
+      <option value="Bahasa Inggris">Bahasa Inggris</option>
+      <option value="PPKn">PPKn</option>
+      <option value="Agama">Agama</option>
+      <option value="Seni Budaya">Seni Budaya</option>
+      <option value="PJOK">PJOK</option>
+      <option value="Informatika">Informatika</option>
+      <option value="__lain">Lainnya…</option>
+    </select>
+    <input id="subjectOther" placeholder="Tulis nama pelajaran" autocomplete="off" style="display:none;margin-top:8px">
+
+    <label>Masuk sebagai</label>
+    <select id="role">
+      <option value="murid">Murid</option>
+      <option value="guru">Guru</option>
+    </select>
+
+    <div id="pinWrap" style="display:none">
+      <label>PIN guru</label>
+      <input id="pin" type="password" inputmode="numeric" placeholder="PIN rahasia guru">
+    </div>
+
+    <button class="primary" id="joinBtn">Masuk Kelas</button>
+    <div id="err"></div>
+  </div>
+</div>
+
+<!-- ======= Layar kelas ======= -->
+<div id="room" class="screen">
+  <div id="main" style="position:relative">
+    <div id="status">Menyambung…</div>
+    <div id="count"></div>
+    <div id="stage"><div class="empty" id="stageEmpty">Menunggu guru bergabung…</div></div>
+    <div id="strip"></div>
+  </div>
+  <div id="bar">
+    <button id="micBtn" title="Mikrofon">🎤</button>
+    <button id="camBtn" title="Kamera">📷</button>
+    <button id="flipBtn" title="Balik kamera">🔄</button>
+    <button id="spkBtn" title="Suara peserta lain">🔊</button>
+    <button id="saveBtn" title="Hemat data (sembunyikan video murid lain)">📶</button>
+    <button id="leaveBtn" class="leave" title="Keluar">📞</button>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
