@@ -10,8 +10,7 @@ const {
   LIVEKIT_URL,
   LIVEKIT_API_KEY,
   LIVEKIT_API_SECRET,
-  TEACHER_PIN = "",
-  DATA_DIR = "./data",
+  DATA_DIR = "./data", // Tempat menyimpan data kelas (di Railway: pasang Volume ke /app/data)
   PORT = 3000,
 } = process.env;
 
@@ -20,38 +19,24 @@ if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
   process.exit(1);
 }
 
-// ---------- PIN guru ----------
-const PIN_FILE = path.join(DATA_DIR, "pin.json");
-const hashPin = (pin, salt) => crypto.scryptSync(String(pin), salt, 32).toString("hex");
-function loadPin() { try { return JSON.parse(fs.readFileSync(PIN_FILE, "utf8")); } catch { return null; } }
-function savePin(pin) {
-  const salt = crypto.randomBytes(16).toString("hex");
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(PIN_FILE, JSON.stringify({ salt, hash: hashPin(pin, salt) }));
-}
-// PIN murid per pelajaran (dibuat guru), disimpan ter-hash di rooms.json
-const ROOMS_FILE = path.join(DATA_DIR, "rooms.json");
-function loadRooms() { try { return JSON.parse(fs.readFileSync(ROOMS_FILE, "utf8")); } catch { return {}; } }
-function saveRoomPin(room, pin) {
-  const rooms = loadRooms();
-  const salt = crypto.randomBytes(16).toString("hex");
-  rooms[room] = { salt, hash: hashPin(pin, salt) };
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(ROOMS_FILE, JSON.stringify(rooms));
-}
-const classPinOk = (v) => /^\d{4,12}$/.test(String(v || ""));
-const safeEq = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
-function pinIsSet() { return !!TEACHER_PIN || !!loadPin(); }
-function pinMatches(pin) {
-  if (TEACHER_PIN) return safeEq(pin, TEACHER_PIN);
-  const rec = loadPin();
-  return !!rec && safeEq(hashPin(pin, rec.salt), rec.hash);
-}
+// ---------- Penyimpanan sederhana (file JSON) ----------
+const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(path.join(DATA_DIR, f), "utf8")); } catch { return d; } };
+const writeJson = (f, v) => { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(path.join(DATA_DIR, f), JSON.stringify(v)); };
 
-// Batasi tebakan PIN: maksimal 10 salah per 10 menit per alamat IP
-const fails = new Map();
+// ---------- Hash (PIN dan kunci guru tidak disimpan apa adanya) ----------
+const hashOf = (v, salt) => crypto.scryptSync(String(v), salt, 32).toString("hex");
+const makeHash = (v) => { const salt = crypto.randomBytes(16).toString("hex"); return { salt, hash: hashOf(v, salt) }; };
+const safeEq = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
+const checkHash = (v, rec) => !!rec && safeEq(hashOf(v, rec.salt), rec.hash);
+const pinOk = (v) => /^\d{4,12}$/.test(String(v || ""));
+
+// ---------- Pembatas percobaan per alamat IP ----------
+const fails = new Map();   // tebakan PIN salah: maks 10 per 10 menit
 const blocked = (ip) => { const f = fails.get(ip); return f && f.n >= 10 && Date.now() - f.t < 600000; };
 const noteFail = (ip) => { const f = fails.get(ip); fails.set(ip, f && Date.now() - f.t < 600000 ? { n: f.n + 1, t: f.t } : { n: 1, t: Date.now() }); };
+const creates = new Map(); // pembuatan kelas baru: maks 10 per jam
+const tooManyCreates = (ip) => { const c = creates.get(ip); return c && c.n >= 10 && Date.now() - c.t < 3600000; };
+const noteCreate = (ip) => { const c = creates.get(ip); creates.set(ip, c && Date.now() - c.t < 3600000 ? { n: c.n + 1, t: c.t } : { n: 1, t: Date.now() }); };
 
 const app = express();
 app.set("trust proxy", 1);
@@ -60,40 +45,58 @@ app.use(express.json());
 
 app.get("/", (_req, res) => res.send("Server kelas online aktif"));
 
+// Cara kerja:
+// - Guru masuk bebas (tanpa PIN guru). Saat pertama membuka kelas, guru membuat PIN murid.
+//   Server membuat "kunci guru" acak yang disimpan di HP guru, supaya hanya HP itu yang bisa
+//   masuk lagi sebagai guru kelas tersebut.
+// - Murid masuk dengan pelajaran + PIN dari guru. PIN dicocokkan ke kelas guru yang punya PIN itu.
 app.post("/token", async (req, res) => {
   try {
-    const { room, name, role, pin } = req.body || {};
-    if (!room || !name) return res.status(400).json({ error: "Nama dan ruang kelas wajib diisi" });
+    const { name, role } = req.body || {};
+    const subject = String(req.body?.room || "").trim().toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 40);
+    const cleanName = String(name || "").trim().slice(0, 30);
+    if (!subject || !cleanName) return res.status(400).json({ error: "Nama dan pelajaran wajib diisi" });
 
     const isTeacher = role === "guru";
-    const cleanRoom = String(room).trim().toLowerCase().slice(0, 40);
-    const cleanName = String(name).trim().slice(0, 30);
     const classPin = String(req.body.classPin || "").trim();
+    const teacherKey = String(req.body.teacherKey || "").trim();
     if (blocked(req.ip)) return res.status(429).json({ error: "Terlalu banyak percobaan. Coba lagi 10 menit lagi." });
 
+    const classes = readJson("classes.json", {});
+    const ofSubject = Object.entries(classes).filter(([, c]) => c.subject === subject);
+    const pinTaken = (pin, exceptId) => ofSubject.some(([id, c]) => id !== exceptId && checkHash(pin, c.pin));
+
+    let liveRoom, newKey = null;
+
     if (isTeacher) {
-      // 1) PIN guru (dibuat sendiri saat pertama kali, atau dari TEACHER_PIN)
-      if (!pinIsSet()) {
-        if (!req.body.setup) return res.status(409).json({ needSetup: true, error: "PIN guru belum dibuat. Buat PIN baru." });
-        if (!/^\d{6,12}$/.test(String(pin || ""))) return res.status(400).json({ needSetup: true, error: "PIN guru harus 6-12 angka." });
-      } else if (!pinMatches(pin)) {
-        noteFail(req.ip);
-        return res.status(403).json({ error: "PIN guru salah" });
+      // Kelas milik guru ini (dikenali dari kunci guru yang tersimpan di HP-nya)
+      const owned = teacherKey ? ofSubject.find(([, c]) => checkHash(teacherKey, c.owner)) : null;
+      if (owned) {
+        const [id, c] = owned;
+        if (classPin) {
+          if (!pinOk(classPin)) return res.status(400).json({ needClassPin: true, error: "PIN murid harus 4-12 angka." });
+          if (pinTaken(classPin, id)) { noteFail(req.ip); return res.status(409).json({ needClassPin: true, error: "PIN itu sudah dipakai kelas lain. Pilih PIN lain." }); }
+          c.pin = makeHash(classPin);
+          writeJson("classes.json", classes);
+        }
+        liveRoom = c.room;
+      } else {
+        // Kelas baru
+        if (!classPin) return res.status(409).json({ needClassPin: true, staleKey: !!teacherKey, error: "Buat PIN murid untuk kelas ini (4-12 angka)." });
+        if (!pinOk(classPin)) return res.status(400).json({ needClassPin: true, error: "PIN murid harus 4-12 angka." });
+        if (tooManyCreates(req.ip)) return res.status(429).json({ error: "Terlalu banyak kelas baru dari perangkat ini. Coba lagi nanti." });
+        if (pinTaken(classPin)) { noteFail(req.ip); return res.status(409).json({ needClassPin: true, error: "PIN itu sudah dipakai kelas lain. Pilih PIN lain." }); }
+        const id = crypto.randomBytes(4).toString("hex");
+        newKey = crypto.randomBytes(16).toString("hex");
+        classes[id] = { subject, room: `${subject}-${id}`, pin: makeHash(classPin), owner: makeHash(newKey), created: Date.now() };
+        writeJson("classes.json", classes);
+        noteCreate(req.ip);
+        liveRoom = classes[id].room;
       }
-      // 2) PIN murid untuk pelajaran ini (wajib jika belum pernah dibuat)
-      const hasClassPin = !!loadRooms()[cleanRoom];
-      if (!hasClassPin && !classPin) return res.status(409).json({ needClassPin: true, error: "Buat PIN murid untuk pelajaran ini (4-12 angka)." });
-      if (classPin && !classPinOk(classPin)) return res.status(400).json({ needClassPin: true, error: "PIN murid harus 4-12 angka." });
-      // Semua valid: simpan
-      if (!pinIsSet()) savePin(pin);
-      if (classPin) saveRoomPin(cleanRoom, classPin);
     } else {
-      const rec = loadRooms()[cleanRoom];
-      if (!rec) return res.status(403).json({ error: "Kelas ini belum dibuka guru." });
-      if (!classPin || !safeEq(hashPin(classPin, rec.salt), rec.hash)) {
-        noteFail(req.ip);
-        return res.status(403).json({ error: "PIN kelas salah" });
-      }
+      const found = classPin ? ofSubject.find(([, c]) => checkHash(classPin, c.pin)) : null;
+      if (!found) { noteFail(req.ip); return res.status(403).json({ error: "PIN kelas salah, atau guru belum membuka kelas ini." }); }
+      liveRoom = found[1].room;
     }
 
     const identity = `${isTeacher ? "guru" : "murid"}-${cleanName}-${Math.random().toString(36).slice(2, 7)}`;
@@ -105,14 +108,16 @@ app.post("/token", async (req, res) => {
       ttl: "4h",
     });
     at.addGrant({
-      room: cleanRoom,
+      room: liveRoom,
       roomJoin: true,
       canPublish: true,
       canSubscribe: true,
       canPublishData: true,
     });
 
-    res.json({ token: await at.toJwt(), url: LIVEKIT_URL });
+    const out = { token: await at.toJwt(), url: LIVEKIT_URL };
+    if (newKey) out.teacherKey = newKey;
+    res.json(out);
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "Gagal membuat token" });
