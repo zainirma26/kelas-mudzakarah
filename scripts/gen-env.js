@@ -20,12 +20,14 @@ const get = (k) => (process.env[k] ?? fromFile[k] ?? "").trim();
 
 const SERVER_URL = get("SERVER_URL").replace(/\/$/, "");
 const CONFIG_URL = get("CONFIG_URL");
+// Notifikasi push aktif jika ada konfigurasi Firebase (GOOGLE_SERVICES_JSON) atau PUSH=1
+const PUSH = get("GOOGLE_SERVICES_JSON") || get("PUSH") === "1" ? "1" : "";
 
 if (!/^https:\/\//.test(SERVER_URL) && !CONFIG_URL) {
   console.error("SERVER_URL belum diisi (harus https://). Salin .env.example menjadi .env lalu isi.");
   process.exit(1);
 }
 
-const out = `/* DIBUAT OTOMATIS oleh scripts/gen-env.js dari .env. Jangan diedit. */\nwindow.KELAS_ENV = ${JSON.stringify({ SERVER_URL, CONFIG_URL }, null, 2)};\n`;
+const out = `/* DIBUAT OTOMATIS oleh scripts/gen-env.js dari .env. Jangan diedit. */\nwindow.KELAS_ENV = ${JSON.stringify({ SERVER_URL, CONFIG_URL, PUSH }, null, 2)};\n`;
 fs.writeFileSync(path.join(root, "www", "env.js"), out);
-console.log("www/env.js dibuat. Server:", SERVER_URL || "(lewat CONFIG_URL)");
+console.log("www/env.js dibuat. Server:", SERVER_URL || "(lewat CONFIG_URL)", "| Notifikasi push:", PUSH ? "aktif" : "mati");
