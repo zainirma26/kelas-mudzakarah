@@ -29,12 +29,10 @@ async function resolveServer() {
 }
 
 // ---------- Simpan isian terakhir ----------
-const subj = $("subject"), subjOther = $("subjectOther");
-const toggleSubj = () => { subjOther.style.display = subj.value === "__lain" ? "block" : "none"; };
-const currentRoomName = () => {
-  const label = subj.value === "__lain" ? subjOther.value.trim() : subj.value;
-  return label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-};
+const subj = $("subject");
+// Nama pelajaran ditulis bebas; huruf besar/kecil dan spasi/tanda baca tidak membedakan ("Matematika 7" = "matematika-7")
+const currentRoomName = () =>
+  subj.value.trim().toLowerCase().normalize("NFC").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "");
 // Kunci guru: disimpan di HP guru, per pelajaran, supaya hanya HP itu yang bisa masuk lagi sebagai guru kelas tersebut
 const keyName = () => "kelas_tk_" + currentRoomName();
 const getKey = () => { try { return localStorage.getItem(keyName()) || ""; } catch (e) { return ""; } };
@@ -43,16 +41,14 @@ const delKey = () => { try { localStorage.removeItem(keyName()); } catch (e) {} 
 
 const updateUi = () => {
   const g = $("role").value === "guru";
-  toggleSubj();
   $("classPinTWrap").style.display = g ? "block" : "none";
   $("classPinWrap").style.display = g ? "none" : "block";
   $("classPinTHint").textContent = getKey()
     ? "Kelas ini sudah dibuat di HP ini. Kosongkan untuk memakai PIN yang sama, atau isi untuk mengganti PIN."
     : "Bagikan PIN ini ke murid agar bisa masuk kelasmu.";
 };
-subj.addEventListener("change", updateUi);
-subjOther.addEventListener("input", updateUi);
-for (const k of ["userName", "role", "subject", "subjectOther", "classPin"]) {
+subj.addEventListener("input", updateUi);
+for (const k of ["userName", "role", "subject", "classPin"]) {
   let v = null;
   try { v = localStorage.getItem("kelas_" + k); } catch (e) {}
   if (v) $(k).value = v;
@@ -67,7 +63,7 @@ $("joinBtn").addEventListener("click", async () => {
   $("err").textContent = "";
 
   if (!userName) { $("err").textContent = "Isi nama kamu."; return; }
-  if (!roomName) { $("err").textContent = "Pilih atau tulis nama pelajaran."; return; }
+  if (!roomName) { $("err").textContent = "Tulis nama mata pelajaran."; return; }
   const classPin = (role === "guru" ? $("classPinT").value : $("classPin").value).trim();
   if (role === "murid" && !classPin) { $("err").textContent = "Masukkan PIN kelas dari guru."; return; }
   if (role === "guru" && classPin && !/^\d{4,12}$/.test(classPin)) { $("err").textContent = "PIN murid harus 4-12 angka."; return; }
@@ -80,7 +76,7 @@ $("joinBtn").addEventListener("click", async () => {
   if (!server) { $("err").textContent = "Tidak dapat terhubung. Periksa internet kamu lalu coba lagi."; return; }
 
   try {
-    for (const [k, v] of Object.entries({ userName, role, subject: subj.value, subjectOther: subjOther.value })) localStorage.setItem("kelas_" + k, v);
+    for (const [k, v] of Object.entries({ userName, role, subject: subj.value })) localStorage.setItem("kelas_" + k, v);
     if (role === "murid") localStorage.setItem("kelas_classPin", classPin);
   } catch (e) {}
 
