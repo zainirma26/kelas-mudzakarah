@@ -18,19 +18,6 @@
     <label>Nama kamu</label>
     <input id="userName" placeholder="Nama" autocomplete="off">
 
-    <label>Pelajaran</label>
-    <select id="subject">
-      <option value="Matematika">Matematika</option>
-      <option value="IPA">IPA</option>
-      <option value="IPS">IPS</option>
-      <option value="Bahasa Indonesia">Bahasa Indonesia</option>
-      <option value="Bahasa Inggris">Bahasa Inggris</option>
-      <option value="PPKn">PPKn</option>
-      <option value="Agama">Agama</option>
-      <option value="Seni Budaya">Seni Budaya</option>
-      <option value="PJOK">PJOK</option>
-      <option value="Informatika">Informatika</option>
-      <option value="__lain">Lainnya…</option>
     </select>
     <input id="subjectOther" placeholder="Tulis nama pelajaran" autocomplete="off" style="display:none;margin-top:8px">
 
@@ -40,18 +27,10 @@
       <option value="guru">Guru</option>
     </select>
 
-    <div id="pinWrap" style="display:none">
-      <label>PIN guru</label>
-      <input id="pin" type="password" inputmode="numeric" placeholder="PIN rahasia guru">
-    </div>
-    <div id="pin2Wrap" style="display:none">
-      <label>Ulangi PIN (buat PIN baru)</label>
-      <input id="pin2" type="password" inputmode="numeric" placeholder="Ketik PIN yang sama lagi">
-    </div>
-
     <div id="classPinTWrap" style="display:none">
-      <label>PIN murid untuk pelajaran ini</label>
-      <input id="classPinT" type="password" inputmode="numeric" placeholder="Buat/ganti PIN murid (4-12 angka)">
+      <label>PIN murid untuk kelas ini</label>
+      <input id="classPinT" type="password" inputmode="numeric" placeholder="Buat PIN murid (4-12 angka)">
+      <p class="sub" id="classPinTHint" style="margin-top:6px"></p>
     </div>
     <div id="classPinWrap" style="display:none">
       <label>PIN kelas (dari guru)</label>
