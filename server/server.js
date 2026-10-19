@@ -53,7 +53,7 @@ app.get("/", (_req, res) => res.send("Server kelas online aktif"));
 app.post("/token", async (req, res) => {
   try {
     const { name, role } = req.body || {};
-    const subject = String(req.body?.room || "").trim().toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 40);
+    const subject = String(req.body?.room || "").trim().toLowerCase().replace(/[^\p{L}\p{N}-]/gu, "").slice(0, 40);
     const cleanName = String(name || "").trim().slice(0, 30);
     if (!subject || !cleanName) return res.status(400).json({ error: "Nama dan pelajaran wajib diisi" });
 
@@ -95,7 +95,7 @@ app.post("/token", async (req, res) => {
       }
     } else {
       const found = classPin ? ofSubject.find(([, c]) => checkHash(classPin, c.pin)) : null;
-      if (!found) { noteFail(req.ip); return res.status(403).json({ error: "PIN kelas salah, atau guru belum membuka kelas ini." }); }
+      if (!found) { noteFail(req.ip); return res.status(403).json({ error: "PIN kelas salah, atau guru belum membuka kelas ini. Pastikan nama pelajaran ditulis sama seperti yang ditulis guru." }); }
       liveRoom = found[1].room;
     }
 
