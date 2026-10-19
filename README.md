@@ -36,7 +36,10 @@ Daftar di https://cloud.livekit.io, buat project (region Singapore). Catat **URL
    Buka di browser: harus tampil "Server kelas online aktif".
 
 ### 3. Isi alamat server di aplikasi
-Buka `www/config.js`, ubah `defaultServer` menjadi alamat dari Render (jika sama dengan bawaan, tidak perlu diubah). Commit.
+Alamat server disimpan di file `.env` (bukan di kode).
+- **Build lewat GitHub Actions:** di repo buka **Settings -> Secrets and variables -> Actions -> Variables**, buat variable `SERVER_URL` berisi alamat dari Render.
+- **Build/uji di komputer sendiri:** salin `.env.example` menjadi `.env`, isi `SERVER_URL`, lalu jalankan `npm run sync`.
+- **Server lokal:** salin `server/.env.example` menjadi `server/.env` dan isi nilainya (di Render tetap diisi lewat Dashboard).
 
 ### 4. Bangun APK
 Build berjalan otomatis setelah commit (tab **Actions** -> **Build APK**, bisa juga **Run workflow**). Tunggu sekitar 5-8 menit,

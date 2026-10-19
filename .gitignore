@@ -2,3 +2,4 @@ node_modules/
 android/
 .env
 opsional/termux/env.sh
+www/env.js

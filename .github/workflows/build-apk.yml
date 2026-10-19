@@ -7,6 +7,7 @@ on:
     paths:
       - 'www/**'
       - 'package.json'
+      - 'scripts/**'
       - 'capacitor.config.json'
       - '.github/workflows/**'
 
@@ -36,6 +37,12 @@ jobs:
           MANIFEST=android/app/src/main/AndroidManifest.xml
           sed -i 's#</manifest>#    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n</manifest>#' "$MANIFEST"
           grep -n "uses-permission" "$MANIFEST"
+
+      - name: Generate env.js from repository variables
+        run: node scripts/gen-env.js
+        env:
+          SERVER_URL: ${{ vars.SERVER_URL }}
+          CONFIG_URL: ${{ vars.CONFIG_URL }}
 
       - name: Sync web assets
         run: npx cap sync android

@@ -2,6 +2,11 @@
   "name": "kelas-online",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
+  "scripts": {
+    "env": "node scripts/gen-env.js",
+    "sync": "node scripts/gen-env.js && cap sync android"
+  },
   "description": "Aplikasi kelas online low-latency (WebRTC) - guru layar besar, murid kecil",
   "dependencies": {
     "@capacitor/android": "^6.1.2",

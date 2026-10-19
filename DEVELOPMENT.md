@@ -40,8 +40,8 @@ Perubahan di `server/` TIDAK butuh APK baru (cukup commit, Render deploy ulang o
 
 | Mau apa | Ubah di mana |
 |---|---|
-| Ganti alamat server | `www/config.js` -> `defaultServer` (perlu build APK ulang) |
-| Pindah server tanpa build ulang | Isi `configUrl` dengan alamat file JSON `{"server":"https://..."}`, lalu cukup ubah file itu |
+| Ganti alamat server | `.env` -> `SERVER_URL` (lokal) atau GitHub Variable `SERVER_URL` (Actions); perlu build APK ulang |
+| Pindah server tanpa build ulang | Isi `CONFIG_URL` di `.env` dengan alamat file JSON `{"server":"https://..."}`, lalu cukup ubah file itu |
 | Server tidak pernah tidur | `render.yaml` -> `plan: starter` (berbayar) |
 | Video lebih ringan/jernih | `www/config.js` -> `teacher` / `student` (`height`, `maxBitrate`, `fps`) |
 | Ganti warna tema | `www/style.css` -> blok `:root` paling atas |
